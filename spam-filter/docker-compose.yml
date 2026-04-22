@@ -1,0 +1,54 @@
+services:
+
+  spam-filter:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      # ── Required ────────────────────────────────────────────────────────────
+      IMAP_HOST:     ${IMAP_HOST}
+      IMAP_USER:     ${IMAP_USER}
+      IMAP_PASSWORD: ${IMAP_PASSWORD}
+      # ── Optional (defaults shown) ────────────────────────────────────────────
+      IMAP_PORT:                   ${IMAP_PORT:-993}
+      IMAP_USE_SSL:                ${IMAP_USE_SSL:-true}
+      IMAP_INBOX:                  ${IMAP_INBOX:-INBOX}
+      IMAP_JUNK_FOLDER:            ${IMAP_JUNK_FOLDER:-Junk}
+      IMAP_POTENTIAL_SPAM_FOLDER:  ${IMAP_POTENTIAL_SPAM_FOLDER:-Potential Spam}
+      OLLAMA_URL:                  ${OLLAMA_URL:-http://ollama:11434}
+      OLLAMA_MODEL:                ${OLLAMA_MODEL:-llama3.1:8b}
+      SPAM_CONFIDENCE_THRESHOLD:   ${SPAM_CONFIDENCE_THRESHOLD:-0.85}
+      POTENTIAL_SPAM_THRESHOLD:    ${POTENTIAL_SPAM_THRESHOLD:-0.60}
+      POLL_INTERVAL:               ${POLL_INTERVAL:-300}
+      DB_PATH:                     /data/spam_filter.db
+    volumes:
+      - spam_filter_data:/data
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama_models:/root/.ollama
+    # Remove or comment out the ports block if you don't need external access.
+    ports:
+      - "11434:11434"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 30s
+    # Uncomment to enable GPU acceleration (requires nvidia-container-toolkit):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  spam_filter_data:
+  ollama_models:
